@@ -10,10 +10,10 @@ import pickle
 from datetime import datetime
 
 # Load airport encodings and the model
-with open('airport_encodings.json', 'r') as f:
+with open('/Users/tranielpride/Desktop/WGU/D602/QBN1-Task3/d602-deployment-task-3/airport_encodings.json', 'r') as f:
     airports = json.load(f)
 
-with open('finalized_model.pkl', 'rb') as model_file:
+with open('/Users/tranielpride/Desktop/WGU/D602/QBN1-Task3/d602-deployment-task-3/finalized_model.pkl', 'rb') as model_file:
     model = pickle.load(model_file)
 print(model)
 
@@ -51,6 +51,25 @@ def create_airport_encoding(airport: str, airports: dict) -> np.array:
 # (polynomial order, encoded airport array, departure time as seconds since midnight, arrival time as seconds since midnight)
 # the polynomial order is 1 unless you changed it during model training in Task 2
 # YOUR CODE GOES HERE
+def time_to_seconds(time_str: str) -> int:
+    """
+    Convert time in HH:MM format to seconds since midnight.
+
+    Parameters:
+    - time_str (str): Time in HH:MM format.
+
+    Returns:
+    - int: Seconds since midnight.
+
+    Raises:
+    - ValueError: If the input string is not in HH:MM format.
+    """
+    from datetime import datetime
+    try:
+        time_obj = datetime.strptime(time_str, "%H:%M")
+        return time_obj.hour * 3600 + time_obj.minute * 60
+    except ValueError:
+        raise ValueError("Time must be in HH:MM format")
 
 # TODO:  write the API endpoints.  
 # YOUR CODE GOES HERE
@@ -66,30 +85,30 @@ async def root():
 # Define the request body schema
 class DelayPredictionRequest(BaseModel):
     arrival_airport: str
+    departure_airport: str
     departure_time: str
     arrival_time: str
+    
     
 @app.get("/predict/delays")
 async def predict_delays(request: DelayPredictionRequest):
     try:
         # Extract data from request
-        arrival_airport = request.arrival_airport
-        departure_time = request.departure_time
-        arrival_time = request.arrival_time
+        arrival_airport = request.arrival_airport.upper()
+        departure_airport = request.departure_airport.upper()
+        departure_time = request.departure_time.upper()
+        arrival_time = request.arrival_time.upper()
         
-        if arrival_airport not in airports:
+        # Explicitly validate the length of the airport codes
+        if len(departure_airport) != 3 or len(arrival_airport) != 3:
+          raise HTTPException(status_code=400, detail="Airport Code should = 3 characters ")
+        
+        if request.arrival_airport.upper() not in airports:
             raise HTTPException(status_code=400, detail="Invalid arrival airport code")
         
         encoded_airport = np.zeros(len(airports))
         encoded_airport[airports[arrival_airport]] = 1
         
-        # Convert time inputs to seconds since midnight
-        def time_to_seconds(time_str: str) -> int:
-            try:
-                t = datetime.strptime(time_str, "%H:%M")
-                return t.hour * 3600 + t.minute * 60
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid time format")
 
         dep_time_seconds = time_to_seconds(departure_time)
         arr_time_seconds = time_to_seconds(arrival_time)
@@ -107,6 +126,7 @@ async def predict_delays(request: DelayPredictionRequest):
         # Construct the response with all details
         return {
             "arrival_airport": arrival_airport,
+            "departure_airport": departure_airport,
             "departure_time": departure_time,
             "arrival_time": arrival_time,
             "average_departure_delay_minutes": float(prediction[0])
