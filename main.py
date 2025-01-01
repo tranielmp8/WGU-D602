@@ -10,10 +10,10 @@ import pickle
 from datetime import datetime
 
 # Load airport encodings and the model
-with open('/Users/tranielpride/Desktop/WGU/D602/QBN1-Task3/d602-deployment-task-3/airport_encodings.json', 'r') as f:
+with open('airport_encodings.json', 'r') as f:
     airports = json.load(f)
 
-with open('/Users/tranielpride/Desktop/WGU/D602/QBN1-Task3/d602-deployment-task-3/finalized_model.pkl', 'rb') as model_file:
+with open('finalized_model.pkl', 'rb') as model_file:
     model = pickle.load(model_file)
 print(model)
 
